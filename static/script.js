@@ -1,6 +1,6 @@
 let currentChat = null;
 
-/* QUICK BUTTONS */
+/* QUICK MESSAGE (HERO BUTTONS) */
 function quickMsg(text){
     document.getElementById("msg").value = text;
     sendMsg();
@@ -8,23 +8,30 @@ function quickMsg(text){
 
 /* CREATE NEW CHAT */
 async function createChat(){
-    let res = await fetch("/new_chat",{method:"POST"});
+    try{
+        let res = await fetch("/new_chat", { method: "POST" });
 
-    if(!res.ok){
-        console.error("New chat failed");
-        return;
+        if(!res.ok){
+            console.error("Failed to create chat");
+            return;
+        }
+
+        let data = await res.json();
+        currentChat = data.id;
+
+        // reset UI
+        document.getElementById("hero").style.display = "flex";
+
+        let chatBox = document.getElementById("chat-box");
+        chatBox.classList.add("hidden");
+
+        document.getElementById("chat-inner").innerHTML = "";
+
+        loadChats();
+
+    }catch(e){
+        console.error("Create chat error:", e);
     }
-
-    let data = await res.json();
-    currentChat = data.id;
-
-    document.getElementById("hero").style.display = "block";
-
-    let chatBox = document.getElementById("chat-box");
-    chatBox.classList.add("hidden");
-    chatBox.innerHTML = "";
-
-    loadChats();
 }
 
 /* SEND MESSAGE */
@@ -34,35 +41,44 @@ async function sendMsg(){
 
     if(!text) return;
 
-    // ensure chat exists
+    // create chat if not exists
     if(!currentChat){
-        let res = await fetch("/new_chat",{method:"POST"});
+        try{
+            let res = await fetch("/new_chat", { method: "POST" });
 
-        if(!res.ok){
-            console.error("Chat create failed");
+            if(!res.ok){
+                console.error("Chat create failed");
+                return;
+            }
+
+            let data = await res.json();
+            currentChat = data.id;
+
+        }catch(e){
+            console.error(e);
             return;
         }
-
-        let data = await res.json();
-        currentChat = data.id;
     }
 
     input.value = "";
 
-    document.getElementById("hero").style.display="none";
+    // switch UI to chat
+    document.getElementById("hero").style.display = "none";
     document.getElementById("chat-box").classList.remove("hidden");
 
+    // add user message
     addMessage("user", text);
 
+    // typing indicator
     let typingDiv = addTyping();
 
     try{
-        let res = await fetch("/chat",{
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({
-                message:text,
-                conversation_id:currentChat
+        let res = await fetch("/chat", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({
+                message: text,
+                conversation_id: currentChat
             })
         });
 
@@ -71,7 +87,7 @@ async function sendMsg(){
         typingDiv.remove();
 
         if(!data || !data.response){
-            addMessage("assistant","⚠️ No response");
+            addMessage("assistant", "⚠️ No response");
             return;
         }
 
@@ -81,75 +97,106 @@ async function sendMsg(){
 
     }catch(e){
         typingDiv.remove();
-        addMessage("assistant","❌ Error");
+        addMessage("assistant", "❌ Error");
         console.error(e);
     }
 }
 
-/* LOAD CHATS */
+/* ADD MESSAGE (CHATGPT STYLE) */
+function addMessage(role, text){
+    let box = document.getElementById("chat-inner");
+
+    let wrapper = document.createElement("div");
+
+    wrapper.className = role === "user"
+        ? "flex justify-end"
+        : "flex justify-start";
+
+    let bubble = document.createElement("div");
+
+    bubble.className = role === "user"
+        ? "bg-blue-600 px-4 py-2 rounded-xl max-w-[75%] text-white"
+        : "bg-white/10 px-4 py-2 rounded-xl max-w-[75%] text-white";
+
+    bubble.innerText = text;
+
+    wrapper.appendChild(bubble);
+    box.appendChild(wrapper);
+
+    box.scrollTop = box.scrollHeight;
+}
+
+/* TYPING INDICATOR */
+function addTyping(){
+    let box = document.getElementById("chat-inner");
+
+    let wrapper = document.createElement("div");
+    wrapper.className = "flex justify-start";
+
+    let bubble = document.createElement("div");
+    bubble.className = "bg-white/10 px-4 py-2 rounded-xl text-gray-300";
+    bubble.innerText = "Typing...";
+
+    wrapper.appendChild(bubble);
+    box.appendChild(wrapper);
+
+    box.scrollTop = box.scrollHeight;
+
+    return wrapper;
+}
+
+/* LOAD CHAT LIST */
 async function loadChats(){
-    let res = await fetch("/get_conversations");
-    let chats = await res.json();
+    try{
+        let res = await fetch("/get_conversations");
+        let chats = await res.json();
 
-    let list = document.getElementById("chat-list");
-    list.innerHTML = "";
+        let list = document.getElementById("chat-list");
+        list.innerHTML = "";
 
-    chats.forEach(chat=>{
-        let div = document.createElement("div");
-        div.className="p-2 cursor-pointer";
+        chats.forEach(chat => {
+            let div = document.createElement("div");
 
-        div.innerText = chat.title || "New Chat";
+            div.className = "p-2 cursor-pointer hover:bg-white/10 rounded";
+            div.innerText = chat.title || "New Chat";
 
-        div.onclick = ()=>loadMessages(chat.id);
+            div.onclick = () => loadMessages(chat.id);
 
-        list.appendChild(div);
-    });
+            list.appendChild(div);
+        });
+
+    }catch(e){
+        console.error("Load chats error:", e);
+    }
 }
 
 /* LOAD MESSAGES */
 async function loadMessages(id){
-    currentChat = id;
+    try{
+        currentChat = id;
 
-    document.getElementById("hero").style.display="none";
-    document.getElementById("chat-box").classList.remove("hidden");
+        document.getElementById("hero").style.display = "none";
+        document.getElementById("chat-box").classList.remove("hidden");
 
-    let res = await fetch(`/get_messages/${id}`);
-    let msgs = await res.json();
+        let res = await fetch(`/get_messages/${id}`);
+        let msgs = await res.json();
 
-    let box = document.getElementById("chat-box");
-    box.innerHTML = "";
+        let box = document.getElementById("chat-inner");
+        box.innerHTML = "";
 
-    msgs.forEach(m=>{
-        addMessage(m.role, m.content);
-    });
+        msgs.forEach(m => {
+            addMessage(m.role, m.content);
+        });
+
+    }catch(e){
+        console.error("Load messages error:", e);
+    }
 }
 
-/* ADD MESSAGE */
-function addMessage(role,text){
-    let box = document.getElementById("chat-box");
-
-    let div = document.createElement("div");
-    div.innerText = role + ": " + text;
-
-    box.appendChild(div);
-    box.scrollTop = box.scrollHeight;
-}
-
-/* TYPING */
-function addTyping(){
-    let box = document.getElementById("chat-box");
-
-    let div = document.createElement("div");
-    div.innerText = "AI typing...";
-
-    box.appendChild(div);
-    return div;
-}
-
-/* ENTER KEY */
-document.addEventListener("DOMContentLoaded",()=>{
-    document.getElementById("msg").addEventListener("keydown",(e)=>{
-        if(e.key==="Enter"){
+/* ENTER KEY SUPPORT */
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("msg").addEventListener("keydown", (e) => {
+        if(e.key === "Enter"){
             e.preventDefault();
             sendMsg();
         }
