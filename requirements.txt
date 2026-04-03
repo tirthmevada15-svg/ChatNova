@@ -1,0 +1,4 @@
+flask
+supabase
+groq
+python-dotenv
