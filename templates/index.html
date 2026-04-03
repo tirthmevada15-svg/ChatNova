@@ -2,18 +2,18 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ChatNova</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
-
-/* ===== BACKGROUND ===== */
 body {
     background-color: #050816;
     color: white;
 }
 
+/* FIXED BACKGROUND (no click blocking) */
 body::before {
     content: "";
     position: fixed;
@@ -22,63 +22,9 @@ body::before {
         linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
     background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
 }
-
-body::after {
-    content: "";
-    position: fixed;
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, rgba(99,102,241,0.15), transparent);
-    top: -100px;
-    right: -100px;
-}
-
-/* ===== ANIMATIONS ===== */
-.fade-in {
-    animation: fadeIn 0.6s ease forwards;
-}
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.msg-anim {
-    animation: msgIn 0.3s ease;
-}
-@keyframes msgIn {
-    from { opacity:0; transform:translateY(8px); }
-    to { opacity:1; transform:translateY(0); }
-}
-
-/* ===== GLASS ===== */
-.glass {
-    background: rgba(255,255,255,0.05);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.1);
-}
-
-/* ===== CARD HOVER ===== */
-.card {
-    transition: all 0.25s ease;
-}
-.card:hover {
-    transform: translateY(-4px) scale(1.03);
-    box-shadow: 0 0 25px rgba(99,102,241,0.3);
-}
-
-/* ===== BUTTON ===== */
-.btn-glow:hover {
-    transform: scale(1.05);
-    box-shadow: 0 0 20px rgba(139,92,246,0.6);
-}
-
-/* ===== INPUT ===== */
-.input-glow:focus {
-    outline: none;
-    box-shadow: 0 0 12px rgba(99,102,241,0.6);
-}
-
 </style>
 
 </head>
@@ -86,96 +32,91 @@ body::after {
 <body class="flex h-screen overflow-hidden">
 
 <!-- SIDEBAR -->
-<div class="w-64 bg-[#0a0f1f]/80 backdrop-blur-xl p-4 flex flex-col">
+<div id="sidebar"
+class="w-64 bg-[#0a0f1f] p-4 flex flex-col hidden md:flex relative z-10">
 
-    <!-- New Chat -->
     <button onclick="createChat()" 
-    class="bg-gradient-to-r from-blue-500 to-purple-600 p-2 rounded mb-4 btn-glow">
+    class="bg-gradient-to-r from-blue-500 to-purple-600 p-2 rounded mb-4">
         + New Chat
     </button>
 
-    <!-- Chat List -->
     <div id="chat-list" class="flex-1 overflow-y-auto space-y-2 text-sm"></div>
 
-    <!-- LOGOUT BUTTON -->
     <div class="mt-auto pt-4 border-t border-white/10">
-
-        <button onclick="logoutUser()" 
-        class="w-full flex items-center justify-center gap-2 py-2 rounded-lg 
-        bg-gradient-to-r from-red-500/20 to-red-600/20 text-red-400 btn-glow">
-            🚪 Logout
+        <button onclick="logoutUser()" class="text-red-400 w-full py-2">
+            Logout
         </button>
-
     </div>
 
 </div>
 
 <!-- MAIN -->
-<div class="flex-1 flex flex-col items-center justify-center relative">
+<div class="flex-1 flex flex-col h-full relative z-10">
 
-<!-- HERO -->
-<div id="hero" class="text-center flex flex-col items-center justify-center h-full fade-in">
-
-    <!-- LOGO -->
-    <div class="w-16 h-16 mb-4 rounded-2xl 
-    bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xl">
-        ⚡
+    <!-- MOBILE TOP BAR -->
+    <div class="md:hidden flex items-center justify-between p-3 border-b border-white/10">
+        <button onclick="toggleSidebar()">☰</button>
+        <span>ChatNova</span>
     </div>
 
-    <!-- TITLE -->
-    <h1 class="text-4xl font-bold mb-2">ChatNova AI</h1>
-    <p class="text-gray-400 mb-8">Ask anything. Learn everything.</p>
+    <!-- HERO -->
+    <div id="hero" class="flex-1 flex items-center justify-center px-4 text-center relative z-10">
+        <div class="max-w-xl w-full">
 
-    <!-- 4 BLOCKS -->
-    <div class="grid grid-cols-2 gap-4 w-full max-w-xl">
+            <h1 class="text-3xl md:text-4xl font-bold mb-3">ChatNova AI</h1>
+            <p class="text-gray-400 mb-6">Ask anything. Learn everything.</p>
 
-        <button onclick="quickMsg('Explain AI in simple terms')"
-        class="card glass p-4 rounded-xl text-left fade-in">
-            <div class="text-lg mb-1">🧠 Explain AI</div>
-            <div class="text-xs text-gray-400">Understand concepts easily</div>
-        </button>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
-        <button onclick="quickMsg('Create startup business plan')"
-        class="card glass p-4 rounded-xl text-left fade-in">
-            <div class="text-lg mb-1">📊 Business Plan</div>
-            <div class="text-xs text-gray-400">Build startup ideas</div>
-        </button>
+                <button onclick="quickMsg('Explain AI')"
+                class="p-3 bg-white/5 rounded text-left hover:bg-white/10">
+                    🧠 Explain AI
+                </button>
 
-        <button onclick="quickMsg('Write landing page copy')"
-        class="card glass p-4 rounded-xl text-left fade-in">
-            <div class="text-lg mb-1">🌐 Website Copy</div>
-            <div class="text-xs text-gray-400">High converting content</div>
-        </button>
+                <button onclick="quickMsg('Business plan')"
+                class="p-3 bg-white/5 rounded text-left hover:bg-white/10">
+                    📊 Business Plan
+                </button>
 
-        <button onclick="quickMsg('Give Instagram reel ideas')"
-        class="card glass p-4 rounded-xl text-left fade-in">
-            <div class="text-lg mb-1">🎥 Reel Ideas</div>
-            <div class="text-xs text-gray-400">Viral content ideas</div>
-        </button>
+                <button onclick="quickMsg('Website copy')"
+                class="p-3 bg-white/5 rounded text-left hover:bg-white/10">
+                    🌐 Website Copy
+                </button>
+
+                <button onclick="quickMsg('Reel ideas')"
+                class="p-3 bg-white/5 rounded text-left hover:bg-white/10">
+                    🎥 Reel Ideas
+                </button>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- CHAT -->
+    <div id="chat-box"
+    class="flex-1 overflow-y-auto px-4 md:px-6 hidden relative z-10">
+
+        <div id="chat-inner"
+        class="max-w-3xl mx-auto w-full space-y-4 py-6"></div>
 
     </div>
 
-</div>
+    <!-- INPUT -->
+    <div class="border-t border-white/10 px-4 md:px-6 py-3 relative z-10">
 
-<!-- CHAT -->
-<div id="chat-box"
-class="w-full max-w-3xl px-4 space-y-4 overflow-y-auto hidden"
-style="height: calc(100vh - 140px);">
-</div>
+        <div class="max-w-3xl mx-auto w-full flex bg-white/5 rounded-xl px-4 py-3">
 
-<!-- INPUT -->
-<div class="absolute bottom-6 w-full max-w-3xl px-4">
+            <input id="msg"
+            class="flex-1 bg-transparent outline-none text-white"
+            placeholder="Ask ChatNova...">
 
-    <div class="flex glass rounded-xl px-4 py-3">
+            <button onclick="sendMsg()" 
+            class="ml-3 px-4 py-2 bg-blue-600 rounded">
+                Send
+            </button>
 
-        <input id="msg"
-        class="flex-1 bg-transparent input-glow outline-none text-white"
-        placeholder="Ask ChatNova...">
-
-        <button onclick="sendMsg()" 
-        class="ml-3 px-4 py-2 rounded bg-gradient-to-r from-blue-500 to-purple-600 btn-glow">
-            Send
-        </button>
+        </div>
 
     </div>
 
@@ -184,6 +125,10 @@ style="height: calc(100vh - 140px);">
 <script src="/static/script.js"></script>
 
 <script>
+function toggleSidebar(){
+    document.getElementById("sidebar").classList.toggle("hidden");
+}
+
 function logoutUser(){
     window.location.href = "/logout";
 }
