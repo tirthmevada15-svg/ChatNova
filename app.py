@@ -39,9 +39,19 @@ def login():
             if res.user:
                 session["user"] = email
                 return redirect("/")
+            else:
+                return "Invalid login"
+
         except Exception as e:
-            print("LOGIN ERROR:", e)
-            return "Login failed"
+            error = str(e)
+
+            if "Email not confirmed" in error:
+                return "Please confirm your email before login."
+
+            if "Invalid login credentials" in error:
+                return "Wrong email or password."
+
+            return f"Login error: {error}"
 
     return render_template("login.html")
 
@@ -53,16 +63,23 @@ def signup():
         password = request.form.get("password")
 
         try:
-            supabase.auth.sign_up({
+            res = supabase.auth.sign_up({
                 "email": email,
                 "password": password
             })
 
-            session["user"] = email
-            return redirect("/")
+            if res.user:
+                return redirect("/login")
+            else:
+                return "Signup failed"
+
         except Exception as e:
-            print("SIGNUP ERROR:", e)
-            return "Signup error"
+            error = str(e)
+
+            if "User already registered" in error:
+                return "User already exists. Please login."
+
+            return f"Signup error: {error}"
 
     return render_template("signup.html")
 
@@ -165,5 +182,4 @@ def chat():
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-app.run(host="0.0.0.0", port=port)
+    app.run(debug=True)
